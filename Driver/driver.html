@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Driver Tracking</title>
+</head>
+<body>
+
+  <h2>🚍 Driver Panel</h2>
+
+  <!-- 🔐 LOGIN -->
+  <div id="loginDiv">
+    <h3>Login</h3>
+    <input type="text" id="phone" placeholder="Phone"><br><br>
+    <input type="password" id="password" placeholder="Password"><br><br>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <!-- 🚍 DASHBOARD -->
+  <div id="dashboard" style="display:none;">
+    <h3>Start Bus</h3>
+
+    <label>Bus ID:</label>
+    <select id="bus">
+      <option value="22">22</option>
+      <option value="17">17</option>
+      <option value="34">34</option>
+    </select><br><br>
+
+    <label>Route:</label>
+    <select id="route">
+      <option value="22">Route 22</option>
+      <option value="19">Route 19</option>
+      <option value="43">Route 43</option>
+    </select><br><br>
+
+    <button onclick="startTracking()">Start Tracking 🚍</button>
+  </div>
+
+  <script>
+    let driverId = null;
+    let activeBusId = null;
+
+    // 🔐 LOGIN FUNCTION
+    async function login() {
+      const phone = document.getElementById("phone").value;
+      const password = document.getElementById("password").value;
+
+      const res = await fetch("http://localhost:5000/api/auth/driver-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ phone, password })
+      });
+
+      const data = await res.json();
+
+      if (data.driver) {
+        alert("Login Success ✅");
+
+        driverId = data.driver.id;
+
+        document.getElementById("loginDiv").style.display = "none";
+        document.getElementById("dashboard").style.display = "block";
+      } else {
+        alert("Login Failed ❌");
+      }
+    }
+
+    // 🚍 START BUS
+    async function startTracking() {
+      const bus_id = document.getElementById("bus").value;
+      const route_id = document.getElementById("route").value;
+
+      const res = await fetch("http://localhost:5000/api/start-bus", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          driver_id: driverId,
+          bus_id,
+          route_id
+        })
+      });
+
+      const data = await res.json();
+
+      activeBusId = data.active_bus_id;
+
+      alert("Bus Started 🚍");
+
+      setInterval(sendLocation, 10000);
+    }
+
+    // 📍 SEND GPS
+    function sendLocation() {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          await fetch("http://localhost:5000/api/update-location", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              active_bus_id: activeBusId,
+              latitude: lat,
+              longitude: lng
+            })
+          });
+
+          console.log("📍 Sent:", lat, lng);
+        },
+        (error) => {
+          alert("Location access denied ❌");
+        }
+      );
+    }
+  </script>
+
+</body>
+</html>
